@@ -65,17 +65,17 @@ func removeInactiveConnections(conns []*connectionContext) []*connectionContext 
 			continue
 		}
 
-		newError("closing quic connection at index: ", i).WriteToLog()
+		newError("closing quic connection at index: ", i)
 		if err := s.conn.CloseWithError(0, ""); err != nil {
-			newError("failed to close connection").Base(err).WriteToLog()
+			newError("failed to close connection").Base(err)
 		}
 		if err := s.rawConn.Close(); err != nil {
-			newError("failed to close raw connection").Base(err).WriteToLog()
+			newError("failed to close raw connection").Base(err)
 		}
 	}
 
 	if len(activeConnections) < len(conns) {
-		newError("active quic connection reduced from ", len(conns), " to ", len(activeConnections)).WriteToLog()
+		newError("active quic connection reduced from ", len(conns), " to ", len(activeConnections))
 		return activeConnections
 	}
 
@@ -125,14 +125,14 @@ func (s *clientConnections) openConnection(ctx context.Context, destAddr net.Add
 			if err == nil {
 				return conn, nil
 			}
-			newError("failed to openStream: ").Base(err).WriteToLog()
+			newError("failed to openStream: ").Base(err)
 		} else {
-			newError("current quic connection is not active!").WriteToLog()
+			newError("current quic connection is not active!")
 		}
 	}
 
 	conns = removeInactiveConnections(conns)
-	newError("dialing quic to ", dest).WriteToLog()
+	newError("dialing quic to ", dest)
 	rawConn, err := internet.DialSystem(ctx, dest, sockopt)
 	if err != nil {
 		return nil, newError("failed to dial to dest: ", err).AtWarning().Base(err)
@@ -142,7 +142,7 @@ func (s *clientConnections) openConnection(ctx context.Context, destAddr net.Add
 		KeepAlivePeriod:      0,
 		HandshakeIdleTimeout: time.Second * 8,
 		MaxIdleTimeout:       time.Second * 300,
-		Tracer: func(ctx context.Context, p logging.Perspective, ci quic.ConnectionID) logging.ConnectionTracer {
+		Tracer: func(ctx context.Context, p logging.Perspective, ci quic.ConnectionID) *logging.ConnectionTracer {
 			return qlog.NewConnectionTracer(&QlogWriter{connID: ci}, p, ci)
 		},
 	}

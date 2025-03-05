@@ -132,11 +132,13 @@ func generateConfig(lport, rport int, remoteAddr, mode, path, host, cert, certRa
 				path = u.String()
 			}
 		}
+		headers := map[string]string{}
+		if host != "" {
+			headers["Host"] = host
+		}
 		transportSettings = &websocket.Config{
 			Path: path,
-			Header: []*websocket.Header{
-				{Key: "Host", Value: host},
-			},
+			Header: headers,
 			Ed: ed,
 		}
 		if mux != 0 {

@@ -13,7 +13,6 @@ import (
 	"github.com/xtls/xray-core/common/net/cnc"
 	http_proto "github.com/xtls/xray-core/common/protocol/http"
 	"github.com/xtls/xray-core/common/serial"
-	"github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/common/signal/done"
 	"github.com/xtls/xray-core/transport/internet"
 	"github.com/xtls/xray-core/transport/internet/reality"
@@ -89,7 +88,7 @@ func (l *Listener) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 	remoteAddr := l.Addr()
 	dest, err := net.ParseDestination(request.RemoteAddr)
 	if err != nil {
-		newError("failed to parse request remote addr: ", request.RemoteAddr).Base(err).WriteToLog()
+		newError("failed to parse request remote addr: ", request.RemoteAddr).Base(err)
 	} else {
 		remoteAddr = &net.TCPAddr{
 			IP:   dest.Address.IP(),
@@ -160,7 +159,7 @@ func Listen(ctx context.Context, address net.Address, port net.Port, streamSetti
 	}
 
 	if streamSettings.SocketSettings != nil && streamSettings.SocketSettings.AcceptProxyProtocol {
-		newError("accepting PROXY protocol").AtWarning().WriteToLog(session.ExportIDToError(ctx))
+		newError("accepting PROXY protocol").AtWarning()
 	}
 
 	listener.server = server
@@ -173,7 +172,7 @@ func Listen(ctx context.Context, address net.Address, port net.Port, streamSetti
 				Net:  "unix",
 			}, streamSettings.SocketSettings)
 			if err != nil {
-				newError("failed to listen on ", address).Base(err).AtError().WriteToLog(session.ExportIDToError(ctx))
+				newError("failed to listen on ", address).Base(err).AtError()
 				return
 			}
 		} else { // tcp
@@ -182,7 +181,7 @@ func Listen(ctx context.Context, address net.Address, port net.Port, streamSetti
 				Port: int(port),
 			}, streamSettings.SocketSettings)
 			if err != nil {
-				newError("failed to listen on ", address, ":", port).Base(err).AtError().WriteToLog(session.ExportIDToError(ctx))
+				newError("failed to listen on ", address, ":", port).Base(err).AtError()
 				return
 			}
 		}
@@ -193,12 +192,12 @@ func Listen(ctx context.Context, address net.Address, port net.Port, streamSetti
 			}
 			err = server.Serve(streamListener)
 			if err != nil {
-				newError("stopping serving H2C or REALITY H2").Base(err).WriteToLog(session.ExportIDToError(ctx))
+				newError("stopping serving H2C or REALITY H2").Base(err)
 			}
 		} else {
 			err = server.ServeTLS(streamListener, "", "")
 			if err != nil {
-				newError("stopping serving TLS H2").Base(err).WriteToLog(session.ExportIDToError(ctx))
+				newError("stopping serving TLS H2").Base(err)
 			}
 		}
 	}()

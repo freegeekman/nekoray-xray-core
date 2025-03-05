@@ -11,9 +11,10 @@ import (
 
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/buf"
+	c "github.com/xtls/xray-core/common/ctx"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/net/cnc"
-	"github.com/xtls/xray-core/common/session"
+	. "github.com/xtls/xray-core/common/session"
 	"github.com/xtls/xray-core/transport/internet"
 	"github.com/xtls/xray-core/transport/internet/reality"
 	"github.com/xtls/xray-core/transport/internet/stat"
@@ -67,13 +68,18 @@ func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *in
 			}
 			address := net.ParseAddress(rawHost)
 
-			hctx = session.ContextWithID(hctx, session.IDFromContext(ctx))
-			hctx = session.ContextWithOutbound(hctx, session.OutboundFromContext(ctx))
-			hctx = session.ContextWithTimeoutOnly(hctx, true)
+			// Copy session ID from original context
+			if id := c.IDFromContext(ctx); id != 0 {
+				hctx = c.ContextWithID(hctx, id)
+			}
+			if outbounds := OutboundsFromContext(ctx); outbounds != nil && len(outbounds) > 0 {
+				hctx = ContextWithOutbounds(hctx, outbounds)
+			}
+			hctx = ContextWithTimeoutOnly(hctx, true)
 
 			pconn, err := internet.DialSystem(hctx, net.TCPDestination(address, port), sockopt)
 			if err != nil {
-				newError("failed to dial to " + addr).Base(err).AtError().WriteToLog()
+				newError("failed to dial to " + addr).Base(err).AtError()
 				return nil, err
 			}
 
@@ -87,17 +93,18 @@ func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *in
 			} else {
 				cn = tls.Client(pconn, tlsConfig).(*tls.Conn)
 			}
-			if err := cn.Handshake(); err != nil {
-				newError("failed to dial to " + addr).Base(err).AtError().WriteToLog()
+			if err := cn.HandshakeContext(hctx); err != nil {
+				newError("failed to dial to " + addr).Base(err).AtError()
 				return nil, err
 			}
 			if !tlsConfig.InsecureSkipVerify {
 				if err := cn.VerifyHostname(tlsConfig.ServerName); err != nil {
-					newError("failed to dial to " + addr).Base(err).AtError().WriteToLog()
+					newError("failed to dial to " + addr).Base(err).AtError()
 					return nil, err
 				}
 			}
-			negotiatedProtocol, negotiatedProtocolIsMutual := cn.NegotiatedProtocol()
+			negotiatedProtocol := cn.NegotiatedProtocol()
+			negotiatedProtocolIsMutual := true
 			if negotiatedProtocol != http2.NextProtoTLS {
 				return nil, newError("http2: unexpected ALPN protocol " + negotiatedProtocol + "; want q" + http2.NextProtoTLS).AtError()
 			}
@@ -171,7 +178,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 	go func() {
 		response, err := client.Do(request)
 		if err != nil {
-			newError("failed to dial to ", dest).Base(err).AtWarning().WriteToLog(session.ExportIDToError(ctx))
+			newError("failed to dial to ", dest).Base(err).AtWarning()
 			wrc.Close()
 			{
 				// Abandon `client` if `client.Do(request)` failed
@@ -185,7 +192,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 			return
 		}
 		if response.StatusCode != 200 {
-			newError("unexpected status", response.StatusCode).AtWarning().WriteToLog(session.ExportIDToError(ctx))
+			newError("unexpected status", response.StatusCode).AtWarning()
 			wrc.Close()
 			return
 		}

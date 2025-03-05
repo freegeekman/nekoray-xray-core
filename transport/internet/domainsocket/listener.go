@@ -88,7 +88,7 @@ func (ln *Listener) run() {
 			if strings.Contains(err.Error(), "closed") {
 				break
 			}
-			newError("failed to accepted raw connections").Base(err).AtWarning().WriteToLog()
+			newError("failed to accepted raw connections").Base(err).AtWarning()
 			continue
 		}
 		go func() {
@@ -96,7 +96,7 @@ func (ln *Listener) run() {
 				conn = tls.Server(conn, ln.tlsConfig)
 			} else if ln.realityConfig != nil {
 				if conn, err = reality.Server(conn, ln.realityConfig); err != nil {
-					newError(err).AtInfo().WriteToLog()
+					newError(err).AtInfo()
 					return
 				}
 			}
@@ -125,13 +125,13 @@ func (fl *fileLocker) Acquire() error {
 
 func (fl *fileLocker) Release() {
 	if err := unix.Flock(int(fl.file.Fd()), unix.LOCK_UN); err != nil {
-		newError("failed to unlock file: ", fl.path).Base(err).WriteToLog()
+		newError("failed to unlock file: ", fl.path).Base(err)
 	}
 	if err := fl.file.Close(); err != nil {
-		newError("failed to close file: ", fl.path).Base(err).WriteToLog()
+		newError("failed to close file: ", fl.path).Base(err)
 	}
 	if err := os.Remove(fl.path); err != nil {
-		newError("failed to remove file: ", fl.path).Base(err).WriteToLog()
+		newError("failed to remove file: ", fl.path).Base(err)
 	}
 }
 

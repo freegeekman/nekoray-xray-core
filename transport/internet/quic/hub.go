@@ -27,13 +27,13 @@ func (l *Listener) acceptStreams(conn quic.Connection) {
 	for {
 		stream, err := conn.AcceptStream(context.Background())
 		if err != nil {
-			newError("failed to accept stream").Base(err).WriteToLog()
+			newError("failed to accept stream").Base(err)
 			select {
 			case <-conn.Context().Done():
 				return
 			case <-l.done.Wait():
 				if err := conn.CloseWithError(0, ""); err != nil {
-					newError("failed to close connection").Base(err).WriteToLog()
+					newError("failed to close connection").Base(err)
 				}
 				return
 			default:
@@ -56,7 +56,7 @@ func (l *Listener) keepAccepting() {
 	for {
 		conn, err := l.listener.Accept(context.Background())
 		if err != nil {
-			newError("failed to accept QUIC connection").Base(err).WriteToLog()
+			newError("failed to accept QUIC connection").Base(err)
 			if l.done.Done() {
 				break
 			}
@@ -108,7 +108,7 @@ func Listen(ctx context.Context, address net.Address, port net.Port, streamSetti
 		MaxIdleTimeout:        time.Second * 300,
 		MaxIncomingStreams:    32,
 		MaxIncomingUniStreams: -1,
-		Tracer: func(ctx context.Context, p logging.Perspective, ci quic.ConnectionID) logging.ConnectionTracer {
+		Tracer: func(ctx context.Context, p logging.Perspective, ci quic.ConnectionID) *logging.ConnectionTracer {
 			return qlog.NewConnectionTracer(&QlogWriter{connID: ci}, p, ci)
 		},
 	}
